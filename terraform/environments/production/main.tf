@@ -1,7 +1,9 @@
-resource "proxmox_virtual_environment_vm" "production" {
-  node_name = "pve"
-  name      = "cv-test-01"
-  vm_id     = 9001
+resource "proxmox_virtual_environment_vm" "k3s" {
+  for_each = var.k3s_nodes
+
+  node_name       = "pve"
+  name            = each.value.vm_name
+  vm_id           = each.value.vm_id
   stop_on_destroy = true
   clone {
     vm_id = 9000
@@ -10,16 +12,19 @@ resource "proxmox_virtual_environment_vm" "production" {
 
   network_device {
     bridge = "vmbr0"
-  } 
+  }
   initialization {
     user_account {
       username = "ubuntu"
-      keys = [var.ssh_ubuntu_key]
+      keys     = [var.ssh_ubuntu_key]
+    }
+    dns {
+      servers = [each.value.vm_dns]
     }
     ip_config {
       ipv4 {
-        address = "192.168.1.201/24"
-        gateway = "192.168.1.1"
+        address = "${each.value.vm_ip}/${each.value.vm_netmask}"
+        gateway = each.value.vm_gateway
       }
     }
   }
