@@ -1,0 +1,5 @@
+- name: Install k3s server
+  ansible.builtin.shell: |
+    curl -sfL https://get.k3s.io | INSTALL_K3S_CHANNEL=v1.31.1+k3s1 sh -
+  args:
+    creates: /usr/local/bin/k3s

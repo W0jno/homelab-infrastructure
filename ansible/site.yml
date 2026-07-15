@@ -1,0 +1,17 @@
+- name: Configure base system
+  hosts: k3s_cluster
+  become: true
+  roles:
+    - common
+
+- name: Configure k3s master
+  hosts: k3s_master
+  become: true
+  roles:
+    - k3s_master
+
+- name: Configure k3s worker
+  hosts: k3s_worker
+  become: true
+  roles:
+    - k3s_worker

@@ -1,0 +1,32 @@
+- name: Update cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install base packages
+  ansible.builtin.apt:
+    name:
+      - curl
+      - ca-certificates
+      - qemu-guest-agent
+      - open-iscsi
+      - nfs-common
+    state: present
+
+- name: Disable SWAP in currently running system (1/2)
+  ansible.builtin.command: swapoff -a
+  changed_when: false
+
+- name: Disable SWAP in /etc/fstab (2/2)
+  ansible.builtin.replace:
+    path: /etc/fstab
+    regexp: '^([^#].*?\sswap\s+.*)$'
+    replace: '# \1'
+
+- name: Enable IPv4 forwarding
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    sysctl_set: true
+    state: present
+    reload: true
