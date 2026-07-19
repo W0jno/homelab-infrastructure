@@ -10,6 +10,12 @@ resource "proxmox_virtual_environment_vm" "k3s" {
     full  = true
   }
 
+  disk {
+    interface = "scsi0"
+    size = 10
+    datastore_id = "local-lvm"
+  }
+
   network_device {
     bridge = "vmbr0"
   }
