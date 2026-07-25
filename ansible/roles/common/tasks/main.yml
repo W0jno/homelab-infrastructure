@@ -30,3 +30,9 @@
     sysctl_set: true
     state: present
     reload: true
+
+- name: Download k3s install script
+  ansible.builtin.get_url:
+    url: https://get.k3s.io
+    dest: /usr/local/src/k3s-install.sh
+    mode: "0755"
