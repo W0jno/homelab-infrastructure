@@ -35,7 +35,7 @@ Terraform provisions Ubuntu VMs from a cloud-init template. Ansible hardens the 
 
 - **Proxmox VE** — hypervisor
 - **Terraform** + `bpg/proxmox` — VM lifecycle, Cloud-Init, static IPs
-- **Ansible** — OS baseline, k3s install, Vault for join token
+- **Ansible** — OS baseline, k3s install, automated kubeconfig export
 - **k3s** — lightweight Kubernetes
 - **GitHub Actions** — CI validation (no remote apply)
 
@@ -45,11 +45,14 @@ Terraform provisions Ubuntu VMs from a cloud-init template. Ansible hardens the 
 .
 ├── terraform/environments/production/   # Proxmox VMs
 ├── ansible/
-│   ├── site.yml                         # entry playbook
-│   ├── inventory/production.ini
-│   ├── group_vars/                      # shared + vaulted secrets
+│   ├── playbooks/
+│   │   ├── site.yml                     # bootstrap cluster
+│   │   └── destroy-k3s.yml              # uninstall k3s
+│   ├── inventory/
+│   │   ├── production.ini
+│   │   └── group_vars/                  # vars loaded with inventory
 │   └── roles/
-│       ├── common/                      # packages, swap, sysctl
+│       ├── common/
 │       ├── k3s_master/
 │       └── k3s_worker/
 ├── k8s/manifests/                       # sample workloads
@@ -80,13 +83,6 @@ k3s_nodes = {
 }
 ```
 
-Store the k3s node join token in Ansible Vault:
-
-```bash
-cd ansible
-ansible-vault edit group_vars/k3s_worker/vault.yml
-```
-
 ### 2. Provision VMs
 
 ```bash
@@ -106,35 +102,26 @@ ssh -i ~/.ssh/proxmox_terraform ubuntu@192.168.1.201
 
 ```bash
 cd ../../../ansible
-ansible k3s_cluster -m ping --ask-vault-pass
-ansible-playbook site.yml --ask-vault-pass
+ansible k3s_cluster -m ping
+ansible-playbook playbooks/site.yml
 ```
 
-After a fresh master recreate, refresh the token from the server before joining workers:
+Ansible will:
+1. harden all nodes (`common`)
+2. install k3s server on master
+3. read the join token from master and join workers automatically
+4. write a ready-to-use kubeconfig to `ansible/.kube/config` (API address rewritten from `127.0.0.1` to the master IP)
 
-```bash
-ssh -i ~/.ssh/proxmox_terraform ubuntu@192.168.1.201 \
-  "sudo cat /var/lib/rancher/k3s/server/node-token"
-```
+No manual token copy and no manual kubeconfig edit.
 
 ### 4. Verify cluster
 
 ```bash
-ssh -i ~/.ssh/proxmox_terraform ubuntu@192.168.1.201 \
-  "sudo k3s kubectl get nodes -o wide"
+export KUBECONFIG=$PWD/.kube/config
+kubectl get nodes -o wide
 ```
 
 Expected: three nodes in `Ready` state.
-
-Optional — use kubectl from your laptop:
-
-```bash
-scp -i ~/.ssh/proxmox_terraform \
-  ubuntu@192.168.1.201:/etc/rancher/k3s/k3s.yaml ~/.kube/config-homelab
-# replace 127.0.0.1 with 192.168.1.201, then:
-export KUBECONFIG=~/.kube/config-homelab
-kubectl get nodes -o wide
-```
 
 ## CI
 
@@ -148,9 +135,9 @@ GitHub-hosted runners cannot reach `192.168.1.0/24`, so there is no remote `terr
 ## Security notes
 
 - `*.tfvars` and Terraform state are gitignored
-- k3s join token lives in Ansible Vault, not plaintext YAML
+- kubeconfig fetched by Ansible is written to `ansible/.kube/` (gitignored)
+- join token is read from the live master during the playbook run — no manual Vault copy after recreate
 - API tokens and private keys never belong in git
-- Recreating the master rotates the cluster CA — update Vault before re-joining workers
 
 ## Roadmap
 

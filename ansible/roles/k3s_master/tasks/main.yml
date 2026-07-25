@@ -10,3 +10,46 @@
     name: k3s
     state: started
     enabled: true
+
+- name: Wait for k3s kubeconfig
+  ansible.builtin.wait_for:
+    path: /etc/rancher/k3s/k3s.yaml
+    timeout: "{{ k3s_timeout }}"
+
+- name: Wait for k3s node token
+  ansible.builtin.wait_for:
+    path: /var/lib/rancher/k3s/server/node-token
+    timeout: "{{ k3s_timeout }}"
+
+- name: Read k3s kubeconfig
+  ansible.builtin.slurp:
+    src: /etc/rancher/k3s/k3s.yaml
+  register: k3s_kubeconfig_b64
+
+- name: Read k3s node token
+  ansible.builtin.slurp:
+    src: /var/lib/rancher/k3s/server/node-token
+  register: k3s_node_token_b64
+
+- name: Expose node token for worker join
+  ansible.builtin.set_fact:
+    k3s_node_token: "{{ k3s_node_token_b64.content | b64decode | trim }}"
+
+- name: Ensure local kubeconfig directory exists
+  ansible.builtin.file:
+    path: "{{ k3s_kubeconfig_local_path | dirname }}"
+    state: directory
+    mode: "0700"
+  delegate_to: localhost
+  become: false
+
+- name: Write kubeconfig to Ansible controller
+  ansible.builtin.copy:
+    dest: "{{ k3s_kubeconfig_local_path }}"
+    content: >-
+      {{ k3s_kubeconfig_b64.content | b64decode
+         | regex_replace('127\\.0\\.0\\.1', inventory_hostname)
+         | regex_replace('localhost', inventory_hostname) }}
+    mode: "0600"
+  delegate_to: localhost
+  become: false

@@ -6,6 +6,9 @@
 *.json
 *.jsonl
 
+# Local kubeconfig fetched by Ansible (contains cluster credentials)
+ansible/.kube/
+
 # .tfstate files
 *.tfstate
 *.tfstate.*
