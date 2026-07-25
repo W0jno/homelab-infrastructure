@@ -24,16 +24,16 @@
 - name: Read k3s kubeconfig
   ansible.builtin.slurp:
     src: /etc/rancher/k3s/k3s.yaml
-  register: k3s_kubeconfig_b64
+  register: k3s_master_kubeconfig_b64
 
 - name: Read k3s node token
   ansible.builtin.slurp:
     src: /var/lib/rancher/k3s/server/node-token
-  register: k3s_node_token_b64
+  register: k3s_master_node_token_b64
 
 - name: Expose node token for worker join
   ansible.builtin.set_fact:
-    k3s_node_token: "{{ k3s_node_token_b64.content | b64decode | trim }}"
+    k3s_master_node_token: "{{ k3s_master_node_token_b64.content | b64decode | trim }}"
 
 - name: Ensure local kubeconfig directory exists
   ansible.builtin.file:
@@ -47,7 +47,7 @@
   ansible.builtin.copy:
     dest: "{{ k3s_kubeconfig_local_path }}"
     content: >-
-      {{ k3s_kubeconfig_b64.content | b64decode
+      {{ k3s_master_kubeconfig_b64.content | b64decode
          | regex_replace('127\\.0\\.0\\.1', inventory_hostname)
          | regex_replace('localhost', inventory_hostname) }}
     mode: "0600"
