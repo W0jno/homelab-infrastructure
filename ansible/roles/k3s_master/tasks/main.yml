@@ -10,7 +10,6 @@
     name: k3s
     state: started
     enabled: true
-<<<<<<< HEAD
 
 - name: Wait for k3s kubeconfig
   ansible.builtin.wait_for:
@@ -54,5 +53,3 @@
     mode: "0600"
   delegate_to: localhost
   become: false
-=======
->>>>>>> origin/master
