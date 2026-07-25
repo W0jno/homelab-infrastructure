@@ -1,8 +1,8 @@
 output "k3s_vm_ids" {
-    description = "The IDs of the K3s VMs"
-    value = {
-        for name, vm in proxmox_virtual_environment_vm.k3s : name => vm.vm_id
-    }
+  description = "The IDs of the K3s VMs"
+  value = {
+    for name, vm in proxmox_virtual_environment_vm.k3s : name => vm.vm_id
+  }
 }
 
 output "k3s_ips" {
