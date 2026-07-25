@@ -74,7 +74,7 @@ Terraform provisions Ubuntu VMs from a cloud-init template. Ansible hardens the 
 Create `terraform/environments/production/production.auto.tfvars` (gitignored):
 
 ```hcl
-proxmox_endpoint  = "https://192.168.1.122:8006/"
+proxmox_endpoint  = "your_proxmox_ip_address"
 proxmox_api_token = "terraform@pve!token=..."
 ssh_ubuntu_key    = "ssh-ed25519 AAAA... terraform-proxmox"
 
@@ -112,8 +112,6 @@ Ansible will:
 3. read the join token from master and join workers automatically
 4. write a ready-to-use kubeconfig to `ansible/.kube/config` (API address rewritten from `127.0.0.1` to the master IP)
 
-No manual token copy and no manual kubeconfig edit.
-
 ### 4. Verify cluster
 
 ```bash
@@ -138,14 +136,3 @@ GitHub-hosted runners cannot reach `192.168.1.0/24`, so there is no remote `terr
 - kubeconfig fetched by Ansible is written to `ansible/.kube/` (gitignored)
 - join token is read from the live master during the playbook run — no manual Vault copy after recreate
 - API tokens and private keys never belong in git
-
-## Roadmap
-
-- [ ] Sample app with Service + Ingress
-- [ ] GitOps (Argo CD)
-- [ ] Monitoring (kube-prometheus-stack)
-- [ ] Self-hosted runner for real apply from CI
-
-## License
-
-Private homelab project.
