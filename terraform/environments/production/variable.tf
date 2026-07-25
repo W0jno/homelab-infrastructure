@@ -21,5 +21,7 @@ variable "k3s_nodes" {
     vm_gateway = string
     vm_netmask = string
     vm_dns     = string
+    memory     = number
+    cores      = number
   }))
 }

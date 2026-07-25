@@ -1,2 +1,4 @@
 ansible_user: ubuntu
 ansible_ssh_private_key_file: ~/.ssh/proxmox_terraform
+
+k3s_version: "v1.31.1+k3s1"
