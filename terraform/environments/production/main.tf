@@ -10,6 +10,16 @@ resource "proxmox_virtual_environment_vm" "k3s" {
     full  = true
   }
 
+  cpu {
+    cores = each.value.cores
+    type = "x86-64-v2-AES"
+  }
+
+  memory {
+    dedicated = each.value.memory
+    floating = each.value.memory
+  }
+
   disk {
     interface = "scsi0"
     size = 10
@@ -34,5 +44,4 @@ resource "proxmox_virtual_environment_vm" "k3s" {
       }
     }
   }
-
 }
