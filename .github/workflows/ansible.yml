@@ -32,7 +32,10 @@ jobs:
         run: pip install ansible ansible-lint
 
       - name: Lint
-        run: ansible-lint site.yml roles/
+        run: ansible-lint playbooks/ roles/
 
-      - name: Syntax check
-        run: ansible-playbook site.yml --syntax-check
+      - name: Syntax check site
+        run: ansible-playbook playbooks/site.yml --syntax-check
+
+      - name: Syntax check destroy
+        run: ansible-playbook playbooks/destroy-k3s.yml --syntax-check

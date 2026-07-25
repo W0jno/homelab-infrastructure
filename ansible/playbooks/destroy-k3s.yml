@@ -1,0 +1,30 @@
+- name: Destroy K3s workers
+  hosts: k3s_worker
+  become: true
+  tasks:
+    - name: Uninstall k3s agent role tasks
+      ansible.builtin.import_role:
+        name: k3s_worker
+        tasks_from: uninstall
+
+- name: Destroy K3s master
+  hosts: k3s_master
+  become: true
+  tasks:
+    - name: Uninstall k3s server role tasks
+      ansible.builtin.import_role:
+        name: k3s_master
+        tasks_from: uninstall
+
+- name: Clean up local kubeconfig
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+  vars:
+    k3s_kubeconfig_local_path: "{{ playbook_dir }}/../.kube/config"
+  tasks:
+    - name: Remove kubeconfig
+      ansible.builtin.file:
+        path: "{{ k3s_kubeconfig_local_path }}"
+        state: absent
