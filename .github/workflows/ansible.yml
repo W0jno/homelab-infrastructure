@@ -7,17 +7,18 @@ on:
       - master
     paths:
       - "ansible/**"
+      - ".github/workflows/ansible.yml"
   pull_request:
     branches:
       - main
       - master
     paths:
       - "ansible/**"
+      - ".github/workflows/ansible.yml"
 
 env:
   ANSIBLE_HOST_KEY_CHECKING: false
   ANSIBLE_FORCE_COLOR: true
-
 
 jobs:
   ansible:
@@ -31,6 +32,9 @@ jobs:
       - name: Install Ansible
         run: pip install ansible ansible-lint
 
+      - name: Install Galaxy roles
+        run: ansible-galaxy role install -r requirements.yml -p roles/galaxy
+
       - name: Lint
         run: ansible-lint playbooks/ roles/
 
@@ -39,3 +43,6 @@ jobs:
 
       - name: Syntax check destroy
         run: ansible-playbook playbooks/destroy-k3s.yml --syntax-check
+
+      - name: Syntax check media
+        run: ansible-playbook playbooks/media.yml --syntax-check
