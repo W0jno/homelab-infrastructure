@@ -11,7 +11,7 @@
     - /opt/media/config/sonarr
     - /mnt/media/downloads
     - /mnt/media/tv
-    - /mnt/media/config/bazarr
+    - /opt/media/config/bazarr
 
 - name: Copy docker compose
   ansible.builtin.copy:
