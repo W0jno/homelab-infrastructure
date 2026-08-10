@@ -23,7 +23,7 @@
   ansible.builtin.command:
     cmd: docker compose up -d
     chdir: /opt/media
-  register: media_compose
+  register: media_host_compose
   changed_when: >-
-    media_compose.stdout is search('Started|Created|Recreated|Removed')
-  failed_when: media_compose.rc != 0
+    media_host_compose.stdout is search('Started|Created|Recreated|Removed')
+  failed_when: media_host_compose.rc != 0
