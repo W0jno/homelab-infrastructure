@@ -1,0 +1,24 @@
+- name: Ensure media directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - /opt/media
+    - /opt/media/config/jellyfin
+    - /opt/media/cache/jellyfin
+    - /opt/media/config/qbittorrent
+    - /opt/media/config/sonarr
+    - /mnt/media/downloads
+    - /mnt/media/tv
+    - /mnt/media/config/bazarr
+
+- name: Copy docker compose
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../media/docker-compose.yml"
+    dest: /opt/media/docker-compose.yml
+
+- name: Start media
+  ansible.builtin.command: docker compose up -d
+  args:
+    chdir: /opt/media

@@ -1,0 +1,9 @@
+- name: Configure media hosts
+  hosts: media
+  become: true
+  roles:
+    - common
+    - role: geerlingguy.docker
+      vars:
+        docker_install_compose_plugin: true
+    - media_host

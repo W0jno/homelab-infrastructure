@@ -8,31 +8,6 @@
     name:
       - curl
       - ca-certificates
+      - gnupg
       - qemu-guest-agent
-      - open-iscsi
-      - nfs-common
     state: present
-
-- name: Disable SWAP in currently running system (1/2)
-  ansible.builtin.command: swapoff -a
-  changed_when: false
-
-- name: Disable SWAP in /etc/fstab (2/2)
-  ansible.builtin.replace:
-    path: /etc/fstab
-    regexp: '^([^#].*?\sswap\s+.*)$'
-    replace: '# \1'
-
-- name: Enable IPv4 forwarding
-  ansible.posix.sysctl:
-    name: net.ipv4.ip_forward
-    value: '1'
-    sysctl_set: true
-    state: present
-    reload: true
-
-- name: Download k3s install script
-  ansible.builtin.get_url:
-    url: https://get.k3s.io
-    dest: /usr/local/src/k3s-install.sh
-    mode: "0755"
