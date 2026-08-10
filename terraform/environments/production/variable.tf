@@ -25,3 +25,19 @@ variable "k3s_nodes" {
     cores      = number
   }))
 }
+
+variable "media" {
+  type = object({
+    vm_id            = number
+    hostname         = string
+    template_file_id = string
+    ip               = string
+    gateway          = string
+    memory           = number
+    cores            = number
+    disk_size        = number
+    media_datastore  = string
+    media_size       = string
+    media_mount_path = string
+  })
+}
