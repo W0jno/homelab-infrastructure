@@ -2,6 +2,8 @@
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
+    owner: "{{ media_host_puid }}"
+    group: "{{ media_host_pgid }}"
     mode: "0755"
   loop:
     - /opt/media
@@ -9,9 +11,10 @@
     - /opt/media/cache/jellyfin
     - /opt/media/config/qbittorrent
     - /opt/media/config/sonarr
+    - /opt/media/config/prowlarr
+    - /opt/media/config/bazarr
     - /mnt/media/downloads
     - /mnt/media/tv
-    - /opt/media/config/bazarr
 
 - name: Copy docker compose
   ansible.builtin.copy:

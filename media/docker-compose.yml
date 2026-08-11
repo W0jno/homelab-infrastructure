@@ -28,13 +28,27 @@ services:
       - 6881:6881
       - 6881:6881/udp
     restart: unless-stopped
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Warsaw
+    volumes:
+      - /opt/media/config/prowlarr:/config
+    ports:
+      - 9696:9696
+    restart: unless-stopped
+
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=Etc/UTC
+      - TZ=Europe/Warsaw
     volumes:
       - /opt/media/config/sonarr:/config
       - /mnt/media/tv:/tv
@@ -42,6 +56,7 @@ services:
     ports:
       - 8989:8989
     restart: unless-stopped
+
   bazarr:
     image: lscr.io/linuxserver/bazarr:latest
     container_name: bazarr

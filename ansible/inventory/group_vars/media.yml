@@ -1,1 +1,4 @@
 ansible_user: root
+
+media_host_puid: 1000
+media_host_pgid: 1000
