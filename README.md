@@ -65,7 +65,7 @@ k3s and media are separate: cluster workloads stay on k3s; downloads/streaming r
 │       └── media_host/                  # dirs + copy compose + up
 ├── media/
 │   └── docker-compose.yml               # home-cinema stack
-├── k8s/manifests/                       # sample workloads
+├── k8s/manifests/                       # portfolio + cloudflared
 └── .github/workflows/                   # terraform + ansible CI
 ```
 
