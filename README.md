@@ -141,8 +141,6 @@ export KUBECONFIG=$PWD/.kube/config
 kubectl get nodes -o wide
 ```
 
-Expected: three nodes in `Ready` state.
-
 ### 5. Bootstrap media host
 
 ```bash
