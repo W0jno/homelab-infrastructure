@@ -1,0 +1,27 @@
+grafana:
+  enabled: true
+  persistence:
+    enabled: false
+
+# K3s: These ServiceMonitors often don't have anything to scrape
+kubeEtcd:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeProxy:
+  enabled: false
+
+prometheus:
+  prometheusSpec:
+    retention: 7d
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 1536Mi
+    storageSpec:
+      emptyDir: {}
