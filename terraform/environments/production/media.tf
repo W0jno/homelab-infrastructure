@@ -50,4 +50,11 @@ resource "proxmox_virtual_environment_container" "media" {
       keys = [var.ssh_ubuntu_key]
     }
   }
+
+  lifecycle {
+    # Library lives on the Media volume; never destroy/replace this container.
+    prevent_destroy = true
+    # Imported resource: mount volume/size cannot be reconciled in place.
+    ignore_changes = [mount_point]
+  }
 }
