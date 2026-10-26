@@ -24,7 +24,7 @@ resource "proxmox_virtual_environment_vm" "k3s" {
     interface    = "scsi0"
     size         = 10
     datastore_id = "local-lvm"
-    discard      = "ignore"
+    discard      = "on"
   }
 
   network_device {
