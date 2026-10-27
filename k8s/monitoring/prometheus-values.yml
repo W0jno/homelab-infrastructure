@@ -2,6 +2,9 @@ grafana:
   enabled: true
   persistence:
     enabled: false
+  grafana.ini:
+    plugins:
+      preinstall_disabled: true
 
 # K3s: These ServiceMonitors often don't have anything to scrape
 kubeEtcd:
