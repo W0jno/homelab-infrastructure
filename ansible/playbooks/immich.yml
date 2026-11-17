@@ -1,9 +1,9 @@
-- name: Configure media hosts
-  hosts: media
+- name: Configure Immich host
+  hosts: immich
   become: true
   roles:
     - common
     - role: geerlingguy.docker
       vars:
         docker_install_compose_plugin: true
-    - media_host
+    - immich

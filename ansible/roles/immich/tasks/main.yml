@@ -1,0 +1,31 @@
+# The postgres data dir is created by Docker and re-owned by the postgres container,
+# so Ansible does not manage it (that would break idempotency).
+- name: Ensure Immich directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0750"
+  loop:
+    - "{{ immich_dir }}"
+    - "{{ immich_upload_location }}"
+
+- name: Copy docker compose
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../immich/docker-compose.yml"
+    dest: "{{ immich_dir }}/docker-compose.yml"
+    mode: "0644"
+
+- name: Render .env
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ immich_dir }}/.env"
+    mode: "0600"
+
+- name: Start Immich stack
+  ansible.builtin.command:
+    cmd: docker compose up -d
+    chdir: "{{ immich_dir }}"
+  register: immich_compose
+  changed_when: >-
+    immich_compose.stderr is search('Started|Created|Recreated|Removed')
+  failed_when: immich_compose.rc != 0

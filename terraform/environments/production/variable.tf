@@ -26,18 +26,21 @@ variable "k3s_nodes" {
   }))
 }
 
-variable "media" {
+variable "immich" {
+  description = "Immich photo LXC on node pve2"
   type = object({
     vm_id            = number
+    node_name        = string
     hostname         = string
-    template_file_id = string
+    template_url     = string
     ip               = string
     gateway          = string
     memory           = number
+    swap             = number
     cores            = number
     disk_size        = number
-    media_datastore  = string
-    media_size       = string
-    media_mount_path = string
+    photos_datastore = string
+    photos_size      = number
+    photos_path      = string
   })
 }

@@ -24,11 +24,12 @@ output "k3s_nodes" {
   }
 }
 
-output "media" {
-  description = "Home cinema LXC summary"
+output "immich" {
+  description = "Immich photo LXC summary"
   value = {
-    vm_id    = proxmox_virtual_environment_container.media.vm_id
-    hostname = var.media.hostname
-    ip       = var.media.ip
+    vm_id     = proxmox_virtual_environment_container.immich.vm_id
+    node_name = var.immich.node_name
+    hostname  = var.immich.hostname
+    ip        = var.immich.ip
   }
 }

@@ -1,0 +1,7 @@
+immich_dir: /opt/immich
+immich_version: v3.4.1
+immich_upload_location: /mnt/photos/library
+immich_db_data_location: /opt/immich/postgres
+immich_timezone: Europe/Warsaw
+# Generated once on the control node and stored outside git (ansible/credentials/ is gitignored).
+immich_db_password: "{{ lookup('ansible.builtin.password', playbook_dir ~ '/../credentials/immich_db_password', length=32, chars=['ascii_letters', 'digits']) }}"
