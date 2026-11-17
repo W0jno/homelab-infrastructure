@@ -1,0 +1,87 @@
+name: "Manifests Validation"
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - "k8s/**"
+      - "immich/**"
+      - ".github/scripts/check_helm_values.py"
+      - ".github/workflows/manifests.yml"
+  pull_request:
+    branches:
+      - main
+      - master
+    paths:
+      - "k8s/**"
+      - "immich/**"
+      - ".github/scripts/check_helm_values.py"
+      - ".github/workflows/manifests.yml"
+
+permissions:
+  contents: read
+
+env:
+  K8S_VERSION: "1.31.1" # matches k3s_version in ansible/inventory/group_vars/all.yml
+  KPS_CHART_VERSION: "90.0.0" # deployed kube-prometheus-stack release (helm -n monitoring list)
+  KUBECONFORM_VERSION: "v0.8.0"
+  KUBECONFORM_SHA256: "9bc2bffbf71f261128533edaf912153948b7ff238f9a531ae6d34466ec287883"
+  HELM_VERSION: "v3.22.0"
+  HELM_SHA256: "1e4ab49e429626cf6c6958d914248b78c9730803c2751b87627e171dc800e7bb"
+
+jobs:
+  kubernetes:
+    name: "Kubernetes manifests"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Install kubeconform and helm
+        run: |
+          curl -sSLo kubeconform.tar.gz "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz"
+          echo "${KUBECONFORM_SHA256}  kubeconform.tar.gz" | sha256sum -c -
+          curl -sSLo helm.tar.gz "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz"
+          echo "${HELM_SHA256}  helm.tar.gz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/bin"
+          tar -xzf kubeconform.tar.gz -C "$RUNNER_TEMP/bin" kubeconform
+          tar -xzf helm.tar.gz -C "$RUNNER_TEMP/bin" --strip-components=1 linux-amd64/helm
+          rm kubeconform.tar.gz helm.tar.gz
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Validate k8s manifests against API schemas
+        run: kubeconform -strict -summary -kubernetes-version "$K8S_VERSION" k8s/manifests/
+
+      - name: Fetch kube-prometheus-stack chart
+        run: |
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm pull prometheus-community/kube-prometheus-stack --version "$KPS_CHART_VERSION" --untar -d "$RUNNER_TEMP/chart"
+
+      - name: Check Helm values for unknown keys
+        run: python3 .github/scripts/check_helm_values.py k8s/monitoring/prometheus-values.yml "$RUNNER_TEMP/chart/kube-prometheus-stack"
+
+      - name: Render monitoring stack and validate it
+        run: |
+          helm template kps "$RUNNER_TEMP/chart/kube-prometheus-stack" -n monitoring \
+            -f k8s/monitoring/prometheus-values.yml > "$RUNNER_TEMP/kps.yaml"
+          kubeconform -strict -summary -kubernetes-version "$K8S_VERSION" \
+            -schema-location default \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            "$RUNNER_TEMP/kps.yaml"
+
+      - name: Validate Grafana dashboard JSON
+        run: python3 -m json.tool k8s/monitoring/dashboards/homelab-overview.json > /dev/null
+
+  compose:
+    name: "Docker Compose"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Validate Immich stack
+        run: cp immich/.env.example immich/.env && docker compose -f immich/docker-compose.yml config --quiet

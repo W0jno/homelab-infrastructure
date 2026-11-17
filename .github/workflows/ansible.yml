@@ -20,6 +20,9 @@ env:
   ANSIBLE_HOST_KEY_CHECKING: false
   ANSIBLE_FORCE_COLOR: true
 
+permissions:
+  contents: read
+
 jobs:
   ansible:
     runs-on: ubuntu-latest
@@ -27,7 +30,9 @@ jobs:
       run:
         working-directory: ./ansible
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Install Ansible
         run: pip install ansible ansible-lint
@@ -44,5 +49,5 @@ jobs:
       - name: Syntax check destroy
         run: ansible-playbook playbooks/destroy-k3s.yml --syntax-check
 
-      - name: Syntax check media
-        run: ansible-playbook playbooks/media.yml --syntax-check
+      - name: Syntax check immich
+        run: ansible-playbook playbooks/immich.yml --syntax-check
