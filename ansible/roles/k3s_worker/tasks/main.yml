@@ -1,12 +1,19 @@
-- name: Install k3s agent
+- name: Read installed k3s version
+  ansible.builtin.command: /usr/local/bin/k3s --version
+  register: k3s_worker_installed
+  changed_when: false
+  failed_when: false
+
+# Runs when k3s is missing or differs from k3s_version, so bumping the version upgrades in place.
+- name: Install or upgrade k3s agent
   ansible.builtin.command: /usr/local/src/k3s-install.sh
   environment:
     INSTALL_K3S_VERSION: "{{ k3s_version }}"
     INSTALL_K3S_EXEC: agent
     K3S_TOKEN: "{{ hostvars[groups['k3s_master'][0]]['k3s_master_node_token'] }}"
     K3S_URL: "{{ k3s_url }}"
-  args:
-    creates: /usr/local/bin/k3s
+  when: k3s_version not in (k3s_worker_installed.stdout | default(''))
+  changed_when: true
 
 - name: Ensure k3s agent is running
   ansible.builtin.service:

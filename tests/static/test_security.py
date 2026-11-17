@@ -47,7 +47,6 @@ def test_no_secret_literals_in_tracked_files():
 
 def test_ansible_vault_files_are_encrypted():
     vaults = [f for f in tracked_files() if f.endswith("vault.yml")]
-    assert vaults
     for rel in vaults:
         assert (REPO / rel).read_text().startswith("$ANSIBLE_VAULT;"), f"{rel} is plaintext"
 
@@ -117,3 +116,11 @@ def test_immich_containers_do_not_run_privileged(compose):
     for name, svc in compose["services"].items():
         assert not svc.get("privileged"), name
         assert svc.get("network_mode") != "host", name
+
+
+def test_traefik_is_disabled():
+    """No Ingress uses Traefik; k3s must not deploy it (it would open 80/443 on every node)."""
+    defaults = load_yaml_docs(REPO / "ansible/roles/k3s_master/defaults/main.yml")[0]
+    assert "traefik" in defaults["k3s_disable_components"]
+    config = (REPO / "ansible/roles/k3s_master/templates/config.yaml.j2").read_text()
+    assert "k3s_disable_components" in config

@@ -31,8 +31,15 @@ Terraform provisions Ubuntu VMs (k3s) on node `pve` and a Debian LXC (Immich) on
 | `k3s-worker-01` | agent | `192.168.1.202` | Ubuntu VM on `pve` |
 | `k3s-worker-02` | agent | `192.168.1.203` | Ubuntu VM on `pve` |
 | `immich` | photo library | `192.168.1.168` | Debian LXC + Docker on `pve2`; photos on a separate `local-lvm` volume → `/mnt/photos` |
+| `pihole-backup` | DNS (backup) | `192.168.1.28` | LXC on `pve` |
+| `home-tools-1` | home tools | `192.168.1.101` | LXC on `pve` |
+| `npm-proxy` | Nginx Proxy Manager | `192.168.1.30` | LXC on `pve` |
+| `vaultwarden` | password manager | `192.168.1.40` | LXC on `pve` |
+| `home-obsidian-db-1` | Obsidian sync DB | DHCP | LXC on `pve` |
 
-k3s and Immich are separate: cluster workloads stay on k3s (`pve`); the photo library runs in its own LXC on a different node (`pve2`).
+The five service LXCs were created by hand and later imported into Terraform (`services.tf`), so their Proxmox definition (CPU, RAM, disk, network) is in code with `prevent_destroy`. What runs inside them is not managed by Ansible yet.
+
+k3s and Immich are separate: cluster workloads stay on k3s (`pve`); the photo library runs in its own LXC on a different node (`pve2`). k3s runs without Traefik (disabled in `/etc/rancher/k3s/config.yaml`), since nothing uses an Ingress.
 
 ## Tech stack
 
@@ -47,7 +54,7 @@ k3s and Immich are separate: cluster workloads stay on k3s (`pve`); the photo li
 
 ```text
 .
-├── terraform/environments/production/   # k3s VMs + Immich LXC
+├── terraform/environments/production/   # k3s VMs, template 9000, Immich + service LXCs
 ├── ansible/
 │   ├── requirements.yml                 # Galaxy roles (geerlingguy.docker)
 │   ├── playbooks/
@@ -73,10 +80,9 @@ k3s and Immich are separate: cluster workloads stay on k3s (`pve`); the photo li
 ## Prerequisites
 
 - Proxmox cluster with nodes `pve` and `pve2`
-- Ubuntu cloud-init template (`VMID 9000`) on `pve` for k3s VMs
-- The Debian LXC template for Immich is downloaded to `pve2` by Terraform
+- Nothing else on Proxmox: Terraform downloads the Ubuntu cloud image and builds template `9000` (`template.tf`), and downloads the Debian LXC template to `pve2`
 - Terraform >= 1.10
-- Ansible + `ansible.posix` collection
+- Ansible (Galaxy roles and collections from `ansible/requirements.yml`)
 - SSH key used by Cloud-Init / LXC `user_account`
 - Proxmox API token (`user@realm!tokenid=secret`)
 
@@ -125,13 +131,14 @@ ssh -i ~/.ssh/proxmox_terraform root@192.168.1.168
 ```bash
 cd ../../../ansible
 ansible-galaxy role install -r requirements.yml -p roles/galaxy
+ansible-galaxy collection install -r requirements.yml -p collections
 ansible k3s_cluster -m ping
 ansible-playbook playbooks/site.yml
 ```
 
 Ansible will:
 1. harden nodes (`common` + `k3s_common`)
-2. install k3s server on master
+2. write `/etc/rancher/k3s/config.yaml` (disables Traefik) and install k3s server on master; changing `k3s_version` upgrades in place (workers one at a time)
 3. read the join token from master and join workers automatically
 4. write a ready-to-use kubeconfig to `ansible/.kube/config` (API address rewritten from `127.0.0.1` to the master IP)
 

@@ -14,5 +14,6 @@
 - name: Configure k3s worker
   hosts: k3s_worker
   become: true
+  serial: 1 # upgrade/restart one agent at a time
   roles:
     - k3s_worker

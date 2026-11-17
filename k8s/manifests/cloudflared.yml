@@ -20,6 +20,14 @@ spec:
       containers:
         - image: cloudflare/cloudflared:latest
           name: cloudflared
+          resources:
+            # Measured ~2m CPU / ~16Mi RAM per replica.
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
           env:
             # Defines an environment variable for the tunnel token.
             - name: TUNNEL_TOKEN

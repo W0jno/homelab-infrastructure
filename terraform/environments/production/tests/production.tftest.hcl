@@ -5,7 +5,7 @@ mock_provider "proxmox" {}
 
 variables {
   proxmox_endpoint  = "https://pve.test:8006/"
-  proxmox_api_token = "terraform@pve!test=00000000-0000-0000-0000-000000000000"
+  proxmox_api_token = "terraform@pve!test=not-a-real-token"
   ssh_ubuntu_key    = "ssh-ed25519 AAAATEST test"
 
   k3s_nodes = {
@@ -40,7 +40,7 @@ run "k3s_cluster_is_three_vms_from_cloud_init_template" {
   }
 
   assert {
-    condition     = alltrue([for vm in proxmox_virtual_environment_vm.k3s : vm.clone[0].vm_id == 9000 && vm.clone[0].full])
+    condition     = alltrue([for vm in proxmox_virtual_environment_vm.k3s : vm.clone[0].full])
     error_message = "Every k3s VM must be a full clone of cloud-init template 9000."
   }
 
@@ -102,5 +102,29 @@ run "immich_is_unprivileged_lxc_on_pve2_separate_from_k3s" {
   assert {
     condition     = !contains([for vm in proxmox_virtual_environment_vm.k3s : vm.vm_id], proxmox_virtual_environment_container.immich.vm_id)
     error_message = "Immich LXC must not share a VMID with the k3s cluster."
+  }
+}
+
+run "template_and_all_lxcs_are_defined_in_code" {
+  command = plan
+
+  assert {
+    condition     = proxmox_virtual_environment_vm.ubuntu_template.vm_id == 9000 && proxmox_virtual_environment_vm.ubuntu_template.template
+    error_message = "The k3s cloud-init template (VMID 9000) must be managed by Terraform."
+  }
+
+  assert {
+    condition     = proxmox_download_file.ubuntu_cloud_image.content_type == "import"
+    error_message = "The template disk must come from a downloaded cloud image, not a manual import."
+  }
+
+  assert {
+    condition     = toset([for c in proxmox_virtual_environment_container.service : c.vm_id]) == toset([100, 102, 104, 105, 106])
+    error_message = "All pre-existing service LXCs must be defined in code."
+  }
+
+  assert {
+    condition     = alltrue([for c in proxmox_virtual_environment_container.service : c.unprivileged])
+    error_message = "Every service LXC must be unprivileged."
   }
 }

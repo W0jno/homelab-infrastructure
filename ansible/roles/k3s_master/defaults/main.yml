@@ -1,0 +1,4 @@
+# Packaged k3s components that must not run (Traefik: no Ingress uses it,
+# and it would open ports 80/443 on every node).
+k3s_disable_components:
+  - traefik

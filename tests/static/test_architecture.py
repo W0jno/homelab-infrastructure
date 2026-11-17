@@ -84,3 +84,9 @@ def test_grafana_dashboard_shows_cpu_and_ram():
     dashboard = (REPO / "k8s/monitoring/dashboards/homelab-overview.json").read_text()
     assert "node_cpu_seconds_total" in dashboard
     assert "node_memory_MemAvailable_bytes" in dashboard
+
+
+def test_ansible_reads_group_vars_only_from_inventory():
+    """Ansible ignores group_vars that are next to neither the inventory nor the playbooks."""
+    assert not (REPO / "ansible/group_vars").exists()
+    assert not (REPO / "ansible/playbooks/group_vars").exists()

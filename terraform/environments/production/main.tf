@@ -6,7 +6,7 @@ resource "proxmox_virtual_environment_vm" "k3s" {
   vm_id           = each.value.vm_id
   stop_on_destroy = true
   clone {
-    vm_id = 9000
+    vm_id = proxmox_virtual_environment_vm.ubuntu_template.vm_id
     full  = true
   }
 
