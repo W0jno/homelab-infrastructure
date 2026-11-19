@@ -13,6 +13,11 @@ spec:
         pod: cloudflared
     spec:
       securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532 # distroless "nonroot" user of the image
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
         sysctls:
           # Allows ICMP traffic (ping, traceroute) to resources behind cloudflared.
           - name: net.ipv4.ping_group_range
@@ -20,6 +25,11 @@ spec:
       containers:
         - image: cloudflare/cloudflared:latest
           name: cloudflared
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           resources:
             # Measured ~2m CPU / ~16Mi RAM per replica.
             requests:
