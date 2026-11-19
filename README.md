@@ -30,6 +30,7 @@ Terraform provisions Ubuntu VMs (k3s) on node `pve` and a Debian LXC (Immich) on
 | `k3s-master` | control plane | `192.168.1.201` | Ubuntu VM on `pve` |
 | `k3s-worker-01` | agent | `192.168.1.202` | Ubuntu VM on `pve` |
 | `k3s-worker-02` | agent | `192.168.1.203` | Ubuntu VM on `pve` |
+| `homepage` | dashboard ([Homepage](https://gethomepage.dev)) | `192.168.1.204` | LXC 107 + Docker on `pve`; links to every service below |
 | `immich` | photo library | `192.168.1.168` | Debian LXC + Docker on `pve2`; photos on a separate `local-lvm` volume → `/mnt/photos` |
 | `pihole-backup` | DNS (backup) | `192.168.1.28` | LXC on `pve` |
 | `home-tools-1` | home tools | `192.168.1.101` | LXC on `pve` |
@@ -60,7 +61,8 @@ k3s and Immich are separate: cluster workloads stay on k3s (`pve`); the photo li
 │   ├── playbooks/
 │   │   ├── site.yml                     # bootstrap k3s
 │   │   ├── destroy-k3s.yml              # uninstall k3s
-│   │   └── immich.yml                   # bootstrap Immich host
+│   │   ├── immich.yml                   # bootstrap Immich host
+│   │   └── homepage.yml                 # bootstrap Homepage dashboard
 │   ├── inventory/
 │   │   ├── production.ini
 │   │   └── group_vars/                  # vars loaded with inventory
@@ -69,7 +71,8 @@ k3s and Immich are separate: cluster workloads stay on k3s (`pve`); the photo li
 │       ├── k3s_common/                  # swap off, ip_forward, k3s script
 │       ├── k3s_master/
 │       ├── k3s_worker/
-│       └── immich/                      # dirs + compose + .env + up
+│       ├── immich/                      # dirs + compose + .env + up
+│       └── homepage/                    # dashboard: compose + config from homepage_services
 ├── immich/
 │   ├── docker-compose.yml               # official Immich stack
 │   └── .env.example                     # template; real .env is rendered by Ansible
@@ -168,6 +171,22 @@ Immich UI: `http://192.168.1.168:2283` (the first account you create becomes the
 The Postgres password is generated on first run by the Ansible `password` lookup and kept in `ansible/credentials/immich_db_password` (gitignored). Back up that file together with the photos.
 
 Photos live in `/mnt/photos/library` on a separate volume; the database lives in `/opt/immich/postgres` on the container rootfs. The container has `prevent_destroy`.
+
+### 6. Bootstrap Homepage dashboard
+
+```bash
+cd ansible
+ansible-playbook playbooks/homepage.yml
+```
+
+Dashboard: `http://192.168.1.204:3000`. The tiles are rendered from `homepage_services` in `ansible/roles/homepage/defaults/main.yml` (single source of truth). Only services described in the thesis are listed (enforced by a static test). Tiles link through NPM/DNS names where one exists (`proxmox.home`, `proxy.home`, `portfolio.fwojno.com`), but the `siteMonitor` status dot checks each service directly by IP, so a broken proxy does not hide which service is down. The container is stateless — rebuild with `terraform apply` + this playbook.
+
+Grafana and the portfolio are reachable from the LAN through NodePorts (`http://192.168.1.201:30300`, `:30080`); the router forwards none of them, Internet access still goes only through the Cloudflare Tunnel. Apply with:
+
+```bash
+helm upgrade kps prometheus-community/kube-prometheus-stack --version 90.0.0 -n monitoring -f k8s/monitoring/prometheus-values.yml
+kubectl apply -f k8s/manifests/portfolio-deployment.yml
+```
 
 ## CI
 

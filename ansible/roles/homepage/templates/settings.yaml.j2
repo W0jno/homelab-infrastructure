@@ -1,0 +1,13 @@
+# {{ ansible_managed }}
+title: {{ homepage_title }}
+language: pl
+theme: dark
+color: slate
+headerStyle: clean
+statusStyle: dot
+layout:
+{% for group in homepage_services %}
+  {{ group.group }}:
+    style: row
+    columns: 4
+{% endfor %}

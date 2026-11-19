@@ -1,0 +1,68 @@
+homepage_dir: /opt/homepage
+homepage_version: v2.8.0
+homepage_port: 3000
+homepage_title: Homelab
+# Host headers the dashboard accepts: direct IP and the NPM name.
+homepage_allowed_hosts: "{{ inventory_hostname }}:{{ homepage_port }},homepage.home"
+
+homepage_k3s_nodeport_host: "{{ groups['k3s_master'][0] }}"
+
+# Single source of truth for the dashboard tiles: only the services described in
+# the thesis (checked by tests/static/test_architecture.py).
+#   href        - what the tile opens: NPM/public DNS name where one exists, else IP
+#   monitor_url - what the status dot checks: the service directly by IP, so a
+#                 broken proxy does not turn every tile red (default: href)
+#   monitor     - false for info-only tiles
+homepage_services:
+  - group: Proxmox
+    items:
+      - name: pve
+        href: https://proxmox.home
+        monitor_url: https://192.168.1.122:8006
+        description: ProDesk 1 - k3s VM + LXC
+        icon: proxmox.svg
+      - name: pve2
+        href: https://192.168.1.123:8006
+        description: ProDesk 2 - Immich
+        icon: proxmox.svg
+  - group: Kubernetes (k3s)
+    items:
+      - name: Portfolio
+        href: https://portfolio.fwojno.com
+        monitor_url: "http://{{ homepage_k3s_nodeport_host }}:30080"
+        description: Strona portfolio
+        icon: mdi-web
+      - name: Cloudflare Tunnel
+        href: https://portfolio.fwojno.com
+        description: cloudflared x2 - publikacja bez otwartych portow
+        icon: cloudflare.svg
+      - name: Grafana
+        href: "http://{{ homepage_k3s_nodeport_host }}:30300"
+        description: kube-prometheus-stack (Prometheus 7d, node_exporter)
+        icon: grafana.svg
+      - name: k3s-master
+        description: "Control plane {{ groups['k3s_master'][0] }}"
+        icon: k3s.svg
+      - name: k3s-worker-01
+        description: "Agent {{ groups['k3s_worker'][0] }}"
+        icon: k3s.svg
+      - name: k3s-worker-02
+        description: "Agent {{ groups['k3s_worker'][1] }}"
+        icon: k3s.svg
+  - group: Aplikacje
+    items:
+      - name: Immich
+        href: "http://{{ groups['immich'][0] }}:2283"
+        description: Kopia zdjec z telefonow (pve2)
+        icon: immich.svg
+  - group: Siec
+    items:
+      - name: Nginx Proxy Manager
+        href: http://proxy.home
+        monitor_url: http://192.168.1.30:81
+        description: Reverse proxy, HTTPS w LAN
+        icon: nginx-proxy-manager.svg
+      - name: Pi-hole
+        href: http://192.168.1.27/admin
+        description: Lokalny DNS + blokowanie reklam (Raspberry Pi)
+        icon: pi-hole.svg

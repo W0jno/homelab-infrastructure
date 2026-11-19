@@ -33,3 +33,12 @@ output "immich" {
     ip        = var.immich.ip
   }
 }
+
+output "homepage" {
+  description = "Homepage dashboard LXC summary"
+  value = {
+    vm_id = proxmox_virtual_environment_container.homepage.vm_id
+    ip    = local.homepage.ip
+    url   = "http://${split("/", local.homepage.ip)[0]}:3000"
+  }
+}

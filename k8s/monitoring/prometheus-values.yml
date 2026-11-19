@@ -1,5 +1,9 @@
 grafana:
   enabled: true
+  # Reachable from the LAN (Homepage tile) at http://<any k3s node>:30300
+  service:
+    type: NodePort
+    nodePort: 30300
   persistence:
     enabled: false
   grafana.ini:

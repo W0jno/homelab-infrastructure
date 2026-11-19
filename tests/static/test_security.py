@@ -63,11 +63,22 @@ def test_cloudflared_token_comes_from_k8s_secret(k8s_docs):
     assert "value" not in env["TUNNEL_TOKEN"]
 
 
+# LAN-only NodePorts linked from the Homepage dashboard; the router forwards none of them
+# (checked from the Internet by tests/live/test_functional.py::SENSITIVE_PORTS).
+LAN_NODEPORTS = {"portfolio-service": 30080}
+
+
 def test_no_k8s_service_exposed_outside_cluster(k8s_docs):
-    """Internet access goes only through the Cloudflare Tunnel: no NodePort/LoadBalancer/hostPort."""
+    """Internet access goes only through the Cloudflare Tunnel: no LoadBalancer/hostPort,
+    NodePort only for the explicitly listed LAN dashboard links."""
     for doc in k8s_docs:
         if doc["kind"] == "Service":
-            assert doc["spec"].get("type", "ClusterIP") == "ClusterIP", doc["metadata"]["name"]
+            name = doc["metadata"]["name"]
+            svc_type = doc["spec"].get("type", "ClusterIP")
+            if svc_type == "NodePort":
+                assert [p.get("nodePort") for p in doc["spec"]["ports"]] == [LAN_NODEPORTS.get(name)], name
+            else:
+                assert svc_type == "ClusterIP", name
         if doc["kind"] == "Deployment":
             spec = doc["spec"]["template"]["spec"]
             assert not spec.get("hostNetwork"), doc["metadata"]["name"]
