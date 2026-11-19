@@ -92,6 +92,20 @@ def test_cloudflared_tunnel_is_highly_available(k8s_docs):
     assert dep["spec"]["template"]["spec"]["containers"][0]["livenessProbe"]["httpGet"]["path"] == "/ready"
 
 
+def test_every_k3s_container_is_non_root_with_read_only_rootfs(k8s_docs):
+    """Pods run as a non-root user, without privilege escalation, on a read-only root filesystem."""
+    for doc in k8s_docs:
+        if doc["kind"] != "Deployment":
+            continue
+        spec = doc["spec"]["template"]["spec"]
+        assert spec.get("securityContext", {}).get("runAsNonRoot") is True, doc["metadata"]["name"]
+        for c in spec["containers"]:
+            sc = c.get("securityContext", {})
+            assert sc.get("readOnlyRootFilesystem") is True, c["name"]
+            assert sc.get("allowPrivilegeEscalation") is False, c["name"]
+            assert sc.get("capabilities", {}).get("drop") == ["ALL"], c["name"]
+
+
 def test_every_k3s_container_has_resource_limits(k8s_docs):
     missing = []
     for doc in k8s_docs:

@@ -12,10 +12,28 @@ spec:
       labels:
         app: portfolio
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001 # "nextjs" user of the image
+        runAsGroup: 1001
+        fsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: portfolio
         image: squnior420/w0jno-portfolio:main
         imagePullPolicy: Always
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
+        # Next.js writes its image/ISR cache here; everything else stays read-only.
+        volumeMounts:
+        - name: next-cache
+          mountPath: /app/.next/cache
+        - name: tmp
+          mountPath: /tmp
         ports:
         - containerPort: 3000
         livenessProbe:
@@ -37,6 +55,13 @@ spec:
           limits:
             cpu: 500m
             memory: 512Mi
+      volumes:
+      - name: next-cache
+        emptyDir:
+          sizeLimit: 256Mi
+      - name: tmp
+        emptyDir:
+          sizeLimit: 64Mi
 ---
 apiVersion: v1
 kind: Service
