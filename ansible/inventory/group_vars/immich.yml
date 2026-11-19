@@ -1,1 +1,5 @@
 ansible_user: root
+
+# Off-site backup (role immich_backup). Keys go to ansible/credentials/, not here.
+immich_backup_bucket: homelab-robaka-immich-backup
+immich_backup_s3_endpoint: s3.eu-central-003.backblazeb2.com

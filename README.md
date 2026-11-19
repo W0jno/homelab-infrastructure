@@ -57,6 +57,7 @@ k3s and Immich are separate: cluster workloads stay on k3s (`pve`); the photo li
 - **Docker Compose** — Immich (server, machine learning, Valkey, Postgres), Homepage
 - **Helm** — `kube-prometheus-stack` (Prometheus + Grafana)
 - **Cloudflare Tunnel** — public access to the portfolio without open ports
+- **restic** + **Backblaze B2** — encrypted off-site backup of the Immich library
 - **GitHub Actions** — CI validation (no remote apply)
 
 ## Repository layout
@@ -80,6 +81,7 @@ k3s and Immich are separate: cluster workloads stay on k3s (`pve`); the photo li
 │       ├── k3s_master/
 │       ├── k3s_worker/
 │       ├── immich/                      # dirs + compose + .env + up
+│       ├── immich_backup/               # restic → Backblaze B2, systemd timers
 │       └── homepage/                    # dashboard: compose + config from homepage_services
 ├── immich/
 │   ├── docker-compose.yml               # official Immich stack
@@ -187,6 +189,47 @@ The Postgres password is generated on first run by the Ansible `password` lookup
 
 Photos live in `/mnt/photos/library` on a separate volume; the database lives in `/opt/immich/postgres` on the container rootfs. The container has `prevent_destroy`.
 
+### 5a. Off-site backup of photos (Backblaze B2)
+
+`playbooks/immich.yml` also runs the `immich_backup` role: [restic](https://restic.net) encrypts the library on the Immich LXC and uploads it to a private B2 bucket through B2's S3-compatible API.
+
+| What | Backed up |
+|------|-----------|
+| `/mnt/photos/library` (originals, profile pictures) | yes |
+| `/mnt/photos/library/backups` (Immich's nightly Postgres dumps, 02:00) | yes |
+| `thumbs/`, `encoded-video/` | no — Immich regenerates them |
+| `/opt/immich/postgres` (live DB files) | no — the dumps above are the consistent copy |
+
+Schedule (host clock is UTC): backup + `forget --prune` daily at 03:30 (keep 7 daily, 4 weekly, 12 monthly); `restic check --read-data-subset=5%` every Sunday at 05:00.
+
+One-time setup:
+
+1. In B2 create a **private** bucket (e.g. `homelab-immich-backup`, lifecycle "Keep only the last version") and an **application key restricted to that bucket** (read and write).
+2. Put the key on the control node — never in git (`ansible/credentials/` is gitignored):
+   ```bash
+   cd ansible
+   install -m 600 /dev/null credentials/b2_immich_key_id  && $EDITOR credentials/b2_immich_key_id   # keyID
+   install -m 600 /dev/null credentials/b2_immich_app_key && $EDITOR credentials/b2_immich_app_key  # applicationKey
+   ```
+3. Set `immich_backup_bucket` and `immich_backup_s3_endpoint` (bucket page → "Endpoint", e.g. `s3.eu-central-003.backblazeb2.com`) in `ansible/inventory/group_vars/immich.yml`.
+4. `ansible-playbook playbooks/immich.yml` — installs restic, generates the repository password in `credentials/restic_immich_password`, initialises the repository and enables the timers.
+5. **Copy `credentials/restic_immich_password` somewhere outside the lab.** Without it the backup cannot be decrypted.
+6. First backup and a check:
+   ```bash
+   ssh root@192.168.1.168 'systemctl start immich-backup && immich-backup snapshots'
+   ```
+
+Restore (the `immich-backup` wrapper runs any restic command with the B2 settings):
+
+```bash
+ssh root@192.168.1.168
+immich-backup snapshots
+immich-backup restore latest --target /restore          # whole library
+immich-backup restore latest --target /restore --include /mnt/photos/library/backups  # DB dumps only
+```
+
+To rebuild Immich from the backup: provision the LXC and run the playbook, stop the stack, copy the restored library back to `/mnt/photos/library`, then follow Immich's [database restore](https://immich.app/docs/administration/backup-and-restore) with the newest dump from `backups/`.
+
 ### 6. Bootstrap Homepage dashboard
 
 ```bash
@@ -247,6 +290,7 @@ Measurements are written to `tests/results/*.json` (gitignored).
 | k3s separated from Immich | `test_k3s_cluster_and_immich_are_disjoint`, `test_k3s_not_scheduled_on_immich_host` |
 | No open ports, access via tunnel / VPN | `test_no_k8s_service_exposed_outside_cluster`, `test_portfolio_served_through_cloudflare_tunnel`, `test_no_open_ports_on_public_ip`, `test_admin_ssh_over_tailscale` |
 | Secrets outside git | `test_secret_files_never_committed`, `test_no_secret_literals_in_tracked_files`, `test_ansible_vault_files_are_encrypted` |
+| Off-site backup restorable | `test_immich_backup_covers_originals_and_db_dumps_only`, `test_immich_backup_secrets_not_in_git`, `test_last_backup_succeeded_and_is_recent`, `test_restore_db_dumps_from_b2` |
 | Dashboard shows the thesis services | `test_homepage_shows_exactly_the_thesis_services`, `test_homepage_status_checks_bypass_the_reverse_proxy`, `test_homepage_dashboard_up`, `test_k3s_web_services_reachable_on_lan_nodeports` |
 | Unprivileged LXC, pod resource limits | `test_immich_lxc_is_unprivileged`, `test_every_k3s_container_has_resource_limits`, `test_pods_stay_within_limits` |
 | CPU / RAM usage, VM vs LXC overhead | `test_cluster_cpu_and_ram_have_headroom`, `test_lxc_shares_host_kernel_vm_has_its_own`, `test_vm_vs_lxc_baseline_overhead`, `test_lxc_restarts_faster_than_vm` |
@@ -263,4 +307,5 @@ Optional env vars for live tests: `PORTFOLIO_URL`, `HOMELAB_PUBLIC_IP` (run from
 - join token is read from the live master during the playbook run — no manual Vault copy after recreate
 - API tokens and private keys never belong in git
 - k8s NodePorts (`30080`, `30300`) are LAN-only and explicitly allow-listed in `test_no_k8s_service_exposed_outside_cluster`; `test_no_open_ports_on_public_ip` checks them from outside
+- B2 application key and restic password live in `ansible/credentials/` (gitignored); data is encrypted by restic before it leaves the LAN, and the key is restricted to one bucket
 - Homepage has no API keys or widget secrets — status dots use plain HTTP checks

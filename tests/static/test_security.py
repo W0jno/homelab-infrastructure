@@ -149,3 +149,23 @@ def test_traefik_is_disabled():
     assert "traefik" in defaults["k3s_master_disable_components"]
     config = (REPO / "ansible/roles/k3s_master/templates/config.yaml.j2").read_text()
     assert "k3s_master_disable_components" in config
+
+
+def test_immich_backup_secrets_not_in_git():
+    """B2 keys and the restic password are read from ansible/credentials/ (gitignored)."""
+    defaults = (REPO / "ansible/roles/immich_backup/defaults/main.yml").read_text()
+    assert "credentials_dir ~ '/restic_immich_password'" in defaults
+    for name in ("b2_immich_key_id", "b2_immich_app_key", "restic_immich_password"):
+        res = subprocess.run(["git", "check-ignore", "-q", "--no-index", f"ansible/credentials/{name}"], cwd=REPO)
+        assert res.returncode == 0, name
+    group_vars = (REPO / "ansible/inventory/group_vars/immich.yml").read_text()
+    assert "AWS_" not in group_vars and "applicationKey" not in group_vars
+
+
+def test_immich_backup_is_encrypted_over_https():
+    """restic encrypts client-side; the B2 S3 endpoint is reached over HTTPS only."""
+    defaults = load_yaml_docs(REPO / "ansible/roles/immich_backup/defaults/main.yml")[0]
+    assert defaults["immich_backup_repository"].startswith("s3:https://")
+    env = (REPO / "ansible/roles/immich_backup/templates/immich.env.j2").read_text()
+    assert "RESTIC_PASSWORD_FILE" in env and "RESTIC_PASSWORD=" not in env
+
