@@ -1,5 +1,5 @@
 # Managed by Ansible (role k3s_master). Read by k3s at install and at every start.
 disable:
-{% for component in k3s_disable_components %}
+{% for component in k3s_master_disable_components %}
   - {{ component }}
 {% endfor %}
