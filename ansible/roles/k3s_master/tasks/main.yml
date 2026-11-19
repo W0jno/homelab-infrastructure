@@ -83,6 +83,6 @@
   ansible.builtin.command: >-
     /usr/local/bin/k3s kubectl -n kube-system delete helmchart
     {{ item }} {{ item }}-crd --ignore-not-found
-  loop: "{{ k3s_disable_components }}"
+  loop: "{{ k3s_master_disable_components }}"
   register: k3s_master_disabled
   changed_when: "'deleted' in k3s_master_disabled.stdout"

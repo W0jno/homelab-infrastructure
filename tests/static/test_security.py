@@ -146,6 +146,6 @@ def test_immich_containers_do_not_run_privileged(compose):
 def test_traefik_is_disabled():
     """No Ingress uses Traefik; k3s must not deploy it (it would open 80/443 on every node)."""
     defaults = load_yaml_docs(REPO / "ansible/roles/k3s_master/defaults/main.yml")[0]
-    assert "traefik" in defaults["k3s_disable_components"]
+    assert "traefik" in defaults["k3s_master_disable_components"]
     config = (REPO / "ansible/roles/k3s_master/templates/config.yaml.j2").read_text()
-    assert "k3s_disable_components" in config
+    assert "k3s_master_disable_components" in config
