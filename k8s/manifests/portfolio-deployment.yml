@@ -48,5 +48,6 @@ spec:
   ports:
     - port: 80
       targetPort: 3000
-  type: ClusterIP
+      nodePort: 30080 # LAN access (Homepage tile); the tunnel still uses port 80
+  type: NodePort
 

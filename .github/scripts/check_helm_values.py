@@ -10,21 +10,34 @@ import yaml
 
 # Maps the chart passes through verbatim (any key is valid inside them).
 FREE_FORM = {"grafana.grafana.ini"}
+# Keys the chart templates read but values.yaml leaves undefined (only in comments).
+TEMPLATE_ONLY = {"grafana.service.nodePort"}  # charts/grafana/templates/service.yaml
+
+
+def deep_merge(base, override):
+    """Parent chart values override subchart defaults key by key, not whole sections."""
+    merged = dict(base)
+    for key, value in override.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = deep_merge(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
 
 
 def chart_defaults(chart):
     defaults = yaml.safe_load((chart / "values.yaml").read_text())
     for sub in (chart / "charts").iterdir():
         if (sub / "values.yaml").exists():
-            defaults.setdefault(sub.name, {})
-            defaults[sub.name] = {**yaml.safe_load((sub / "values.yaml").read_text()), **defaults[sub.name]}
+            defaults[sub.name] = deep_merge(yaml.safe_load((sub / "values.yaml").read_text()) or {},
+                                            defaults.get(sub.name) or {})
     return defaults
 
 
 def unknown_keys(ours, defaults, path=""):
     for key, value in ours.items():
         full = f"{path}.{key}" if path else key
-        if full in FREE_FORM:
+        if full in FREE_FORM or full in TEMPLATE_ONLY:
             continue
         if key not in defaults:
             yield full

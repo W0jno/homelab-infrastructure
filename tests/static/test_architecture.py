@@ -8,6 +8,7 @@ EXPECTED_HOSTS = {
     "k3s_master": ["192.168.1.201"],
     "k3s_worker": ["192.168.1.202", "192.168.1.203"],
     "immich": ["192.168.1.168"],
+    "homepage": ["192.168.1.204"],
 }
 
 
@@ -32,6 +33,11 @@ def test_k3s_cluster_and_immich_are_disjoint():
     assert cluster.isdisjoint(inv["immich"])
 
 
+def test_homepage_host_is_not_a_cluster_member():
+    inv = inventory()
+    assert set(inv["homepage"]).isdisjoint(set(inv["k3s_master"]) | set(inv["k3s_worker"]) | set(inv["immich"]))
+
+
 def plays(name):
     return load_yaml_docs(REPO / "ansible/playbooks" / name)[0]
 
@@ -45,6 +51,47 @@ def test_immich_playbook_targets_only_immich_and_uses_docker():
     assert {p["hosts"] for p in immich_plays} == {"immich"}
     roles = [r if isinstance(r, str) else r["role"] for r in immich_plays[0]["roles"]]
     assert "geerlingguy.docker" in roles and "immich" in roles
+
+
+def test_homepage_playbook_targets_only_homepage_and_uses_docker():
+    homepage_plays = plays("homepage.yml")
+    assert {p["hosts"] for p in homepage_plays} == {"homepage"}
+    roles = [r if isinstance(r, str) else r["role"] for r in homepage_plays[0]["roles"]]
+    assert "geerlingguy.docker" in roles and "homepage" in roles
+
+
+# Services described in the thesis; the dashboard shows exactly these, nothing else.
+THESIS_TILES = {
+    "pve", "pve2",
+    "Portfolio", "Cloudflare Tunnel", "Grafana", "k3s-master", "k3s-worker-01", "k3s-worker-02",
+    "Immich", "Nginx Proxy Manager", "Pi-hole",
+}
+
+
+def test_homepage_shows_exactly_the_thesis_services():
+    defaults = load_yaml_docs(REPO / "ansible/roles/homepage/defaults/main.yml")[0]
+    tiles = {item["name"] for group in defaults["homepage_services"] for item in group["items"]}
+    assert tiles == THESIS_TILES
+    assert re.fullmatch(r"v\d+\.\d+\.\d+", defaults["homepage_version"])
+
+
+def test_homepage_status_checks_bypass_the_reverse_proxy():
+    """Tiles may link through NPM/DNS names, but status dots check services directly by IP."""
+    defaults = load_yaml_docs(REPO / "ansible/roles/homepage/defaults/main.yml")[0]
+    for group in defaults["homepage_services"]:
+        for item in group["items"]:
+            target = item.get("monitor_url", item.get("href", ""))
+            if ".home" in target:
+                raise AssertionError(f"{item['name']} is monitored through the proxy: {target}")
+
+
+def test_k3s_web_services_exposed_on_lan_nodeports():
+    values = load_yaml_docs(REPO / "k8s/monitoring/prometheus-values.yml")[0]
+    assert values["grafana"]["service"] == {"type": "NodePort", "nodePort": 30300}
+    portfolio_svc = next(d for d in load_yaml_docs(REPO / "k8s/manifests/portfolio-deployment.yml")
+                         if d["kind"] == "Service")
+    assert portfolio_svc["spec"]["type"] == "NodePort"
+    assert portfolio_svc["spec"]["ports"][0]["nodePort"] == 30080
 
 
 def test_workers_join_master_from_inventory():

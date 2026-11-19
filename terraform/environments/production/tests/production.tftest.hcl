@@ -128,3 +128,31 @@ run "template_and_all_lxcs_are_defined_in_code" {
     error_message = "Every service LXC must be unprivileged."
   }
 }
+
+run "homepage_is_unprivileged_lxc_on_pve_with_free_ip" {
+  command = plan
+
+  assert {
+    condition     = proxmox_virtual_environment_container.homepage.unprivileged && proxmox_virtual_environment_container.homepage.node_name == "pve"
+    error_message = "Homepage LXC must be an unprivileged container on node pve."
+  }
+
+  assert {
+    condition     = proxmox_virtual_environment_container.homepage.initialization[0].ip_config[0].ipv4[0].address == "192.168.1.204/24"
+    error_message = "Homepage LXC must get the static IP 192.168.1.204."
+  }
+
+  assert {
+    condition     = !contains([for n in var.k3s_nodes : "${n.vm_ip}/${n.vm_netmask}"], proxmox_virtual_environment_container.homepage.initialization[0].ip_config[0].ipv4[0].address)
+    error_message = "Homepage LXC IP must not collide with a k3s node."
+  }
+
+  assert {
+    condition = !contains(concat(
+      [for vm in proxmox_virtual_environment_vm.k3s : vm.vm_id],
+      [for c in proxmox_virtual_environment_container.service : c.vm_id],
+      [proxmox_virtual_environment_container.immich.vm_id],
+    ), proxmox_virtual_environment_container.homepage.vm_id)
+    error_message = "Homepage LXC must have its own VMID."
+  }
+}

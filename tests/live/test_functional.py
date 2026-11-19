@@ -10,8 +10,9 @@ from lab import IMMICH, IMMICH_CONTAINERS, IMMICH_PING, IMMICH_PORT, NODES, depl
 
 pytestmark = pytest.mark.live
 
-# Ports that must NOT be reachable from the Internet (SSH, k8s API, Proxmox UI, Immich).
-SENSITIVE_PORTS = [22, 80, 443, 2000, 3000, 6443, 8006, IMMICH_PORT]
+# Ports that must NOT be reachable from the Internet (SSH, k8s API, Proxmox UI, Immich,
+# Homepage, LAN NodePorts for Grafana/portfolio).
+SENSITIVE_PORTS = [22, 80, 443, 2000, 3000, 6443, 8006, IMMICH_PORT, 30080, 30300]
 
 
 def test_all_k3s_nodes_ready():
@@ -67,6 +68,19 @@ def test_immich_containers_running():
         assert states.get(container) == "running", container
 
 
+HOMEPAGE_URL = "http://192.168.1.204:3000"
+
+
+def test_homepage_dashboard_up():
+    r = requests.get(HOMEPAGE_URL, timeout=10)
+    assert r.status_code == 200 and "Homelab" in r.text
+
+
+@pytest.mark.parametrize("url", ["http://192.168.1.201:30300/api/health", "http://192.168.1.201:30080/"])
+def test_k3s_web_services_reachable_on_lan_nodeports(url):
+    assert requests.get(url, timeout=10).status_code == 200
+
+
 def test_portfolio_served_through_cloudflare_tunnel(env):
     r = requests.get(env("PORTFOLIO_URL"), timeout=15)
     assert r.status_code == 200
@@ -106,7 +120,7 @@ def changed_tasks(output):
     return changed
 
 
-@pytest.mark.parametrize("playbook", ["site.yml", "immich.yml"])
+@pytest.mark.parametrize("playbook", ["site.yml", "immich.yml", "homepage.yml"])
 def test_hosts_converged_with_ansible(playbook):
     """Idempotency: a --check run against the live hosts reports nothing to change."""
     res = run(["ansible-playbook", f"playbooks/{playbook}", "--check"], cwd=REPO / "ansible", check=False,

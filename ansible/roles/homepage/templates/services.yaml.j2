@@ -1,0 +1,15 @@
+# {{ ansible_managed }}
+{% for group in homepage_services %}
+- {{ group.group }}:
+{% for item in group['items'] %}
+    - {{ item.name }}:
+        description: {{ item.description | to_json }}
+        icon: {{ item.icon }}
+{% if item.href is defined %}
+        href: {{ item.href }}
+{% endif %}
+{% if item.monitor | default(item.href is defined) %}
+        siteMonitor: {{ item.monitor_url | default(item.href) }}
+{% endif %}
+{% endfor %}
+{% endfor %}

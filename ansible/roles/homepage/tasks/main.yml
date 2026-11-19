@@ -1,0 +1,35 @@
+- name: Ensure Homepage directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ homepage_dir }}"
+    - "{{ homepage_dir }}/config"
+
+- name: Render docker compose
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ homepage_dir }}/docker-compose.yml"
+    mode: "0644"
+
+- name: Render Homepage config
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "{{ homepage_dir }}/config/{{ item }}"
+    mode: "0644"
+  loop:
+    - settings.yaml
+    - services.yaml
+    - widgets.yaml
+    - bookmarks.yaml
+  notify: Restart Homepage
+
+- name: Start Homepage stack
+  ansible.builtin.command:
+    cmd: docker compose up -d
+    chdir: "{{ homepage_dir }}"
+  register: homepage_compose
+  changed_when: >-
+    homepage_compose.stderr is search('Started|Created|Recreated|Removed')
+  failed_when: homepage_compose.rc != 0

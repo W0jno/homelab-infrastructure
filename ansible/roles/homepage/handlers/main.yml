@@ -1,0 +1,5 @@
+- name: Restart Homepage
+  ansible.builtin.command:
+    cmd: docker compose restart homepage
+    chdir: "{{ homepage_dir }}"
+  changed_when: true

@@ -51,3 +51,6 @@ jobs:
 
       - name: Syntax check immich
         run: ansible-playbook playbooks/immich.yml --syntax-check
+
+      - name: Syntax check homepage
+        run: ansible-playbook playbooks/homepage.yml --syntax-check
