@@ -1,0 +1,10 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Verify a sample of the Immich backup in Backblaze B2 (restic check)
+Wants=network-online.target
+After=network-online.target immich-backup.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/immich-backup check
+Nice=10

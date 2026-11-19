@@ -94,6 +94,21 @@ def test_k3s_web_services_exposed_on_lan_nodeports():
     assert portfolio_svc["spec"]["ports"][0]["nodePort"] == 30080
 
 
+def test_immich_playbook_includes_offsite_backup():
+    roles = [r if isinstance(r, str) else r["role"] for r in plays("immich.yml")[0]["roles"]]
+    assert roles.index("immich_backup") > roles.index("immich")
+
+
+def test_immich_backup_covers_originals_and_db_dumps_only():
+    """Originals + Immich's DB dumps are backed up; regenerable thumbs/transcodes are not."""
+    defaults = load_yaml_docs(REPO / "ansible/roles/immich_backup/defaults/main.yml")[0]
+    assert defaults["immich_backup_paths"] == ["{{ immich_upload_location }}"]
+    assert {e.rsplit("/", 1)[1] for e in defaults["immich_backup_excludes"]} == {"thumbs", "encoded-video"}
+    assert defaults["immich_backup_keep_daily"] >= 7
+    timer = (REPO / "ansible/roles/immich_backup/templates/immich-backup.timer.j2").read_text()
+    assert "Persistent=true" in timer
+
+
 def test_workers_join_master_from_inventory():
     """Join token and URL come from the live master, so a rebuild needs no manual copy."""
     worker_vars = load_yaml_docs(REPO / "ansible/inventory/group_vars/k3s_worker/vars.yml")[0]

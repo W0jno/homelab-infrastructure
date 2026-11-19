@@ -1,0 +1,88 @@
+- name: Check that B2 settings are configured
+  ansible.builtin.assert:
+    that:
+      - immich_backup_bucket | length > 0
+      - immich_backup_s3_endpoint | length > 0
+    fail_msg: Set immich_backup_bucket and immich_backup_s3_endpoint in ansible/inventory/group_vars/immich.yml.
+    quiet: true
+
+- name: Check that B2 application key files exist on the control node
+  ansible.builtin.assert:
+    that:
+      - immich_backup_key_id_file is file
+      - immich_backup_app_key_file is file
+    fail_msg: >-
+      Put the B2 keyID in {{ immich_backup_key_id_file }} and the applicationKey in
+      {{ immich_backup_app_key_file }} (see README, "Off-site backup").
+    quiet: true
+  delegate_to: localhost
+  become: false
+
+- name: Install restic
+  ansible.builtin.apt:
+    name: restic
+    state: present
+
+- name: Ensure restic config directory
+  ansible.builtin.file:
+    path: "{{ immich_backup_config_dir }}"
+    state: directory
+    mode: "0700"
+
+- name: Write restic repository password
+  ansible.builtin.copy:
+    content: "{{ immich_backup_restic_password }}\n"
+    dest: "{{ immich_backup_config_dir }}/immich.password"
+    mode: "0600"
+  no_log: true
+
+- name: Write restic environment
+  ansible.builtin.template:
+    src: immich.env.j2
+    dest: "{{ immich_backup_config_dir }}/immich.env"
+    mode: "0600"
+  no_log: true
+
+- name: Install backup script
+  ansible.builtin.template:
+    src: immich-backup.sh.j2
+    dest: /usr/local/bin/immich-backup
+    mode: "0750"
+
+- name: Install systemd units
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    mode: "0644"
+  loop:
+    - immich-backup.service
+    - immich-backup.timer
+    - immich-backup-check.service
+    - immich-backup-check.timer
+  notify: Reload systemd
+
+- name: Flush handlers so timers see the new units
+  ansible.builtin.meta: flush_handlers
+
+- name: Check whether the restic repository exists
+  ansible.builtin.command:
+    cmd: /usr/local/bin/immich-backup cat config
+  register: immich_backup_repo
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Initialise the restic repository
+  ansible.builtin.command:
+    cmd: /usr/local/bin/immich-backup init
+  when: immich_backup_repo.rc != 0
+  changed_when: true
+
+- name: Enable backup timers
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop:
+    - immich-backup.timer
+    - immich-backup-check.timer

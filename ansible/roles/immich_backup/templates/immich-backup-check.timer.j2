@@ -1,0 +1,10 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Weekly integrity check of the Immich backup
+
+[Timer]
+OnCalendar={{ immich_backup_check_on_calendar }}
+Persistent=true
+
+[Install]
+WantedBy=timers.target

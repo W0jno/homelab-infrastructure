@@ -1,0 +1,29 @@
+#!/bin/sh
+# {{ ansible_managed }}
+# Usage: immich-backup              run backup + retention
+#        immich-backup check        verify a sample of the stored data
+#        immich-backup <restic args> any restic command against the B2 repository
+set -eu
+set -a
+. {{ immich_backup_config_dir }}/immich.env
+set +a
+
+case "${1:-backup}" in
+  backup)
+    restic backup --tag immich --one-file-system \
+{% for path in immich_backup_excludes %}
+      --exclude {{ path | quote }} \
+{% endfor %}
+      {{ immich_backup_paths | map('quote') | join(' ') }}
+    restic forget --tag immich --prune \
+      --keep-daily {{ immich_backup_keep_daily }} \
+      --keep-weekly {{ immich_backup_keep_weekly }} \
+      --keep-monthly {{ immich_backup_keep_monthly }}
+    ;;
+  check)
+    restic check --read-data-subset={{ immich_backup_check_subset }}
+    ;;
+  *)
+    exec restic "$@"
+    ;;
+esac

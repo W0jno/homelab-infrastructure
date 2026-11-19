@@ -1,0 +1,11 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Back up the Immich library to Backblaze B2 (restic)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/immich-backup backup
+Nice=10
+IOSchedulingClass=idle
